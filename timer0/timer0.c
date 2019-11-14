@@ -65,8 +65,8 @@ prescaler 1/8																														*
 				(0<<FOC0B)|		//	6 bit: Force Output Compare B
 				(0<<WGM02)|		//	3 bit: Waveform Generation Mode
 				(0<<CS02)|		//	2 bit: Clock Select
-				(1<<CS01)|		//	1 bit: Clock Select
-				(0<<CS00);		//	0 bit: Clock Select
+				(0<<CS01)|		//	1 bit: Clock Select
+				(1<<CS00);		//	0 bit: Clock Select
 		
 	TCNT0 =		0x00;			//	Текущее значение счетчика
 		
@@ -89,7 +89,12 @@ ISR(TIMER0_COMPA_vect)
 	{
 		set_step_2();
 	}
-	measurement();
+	
+	if ((return_step_measurement() == 1) | (return_step_measurement() == 2))
+	{
+		measurement();
+	}
+
 }
 
 void Timer0_stop(void)

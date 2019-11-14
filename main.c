@@ -45,6 +45,7 @@ sei();
 		
 		if   (getch_usart()==0x04)
 		{
+			_delay_ms(100);
 			if (return_step_measurement() == 0)
 			{
 				measurement();		//	идем в шаг 0

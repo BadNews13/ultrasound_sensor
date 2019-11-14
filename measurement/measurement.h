@@ -16,7 +16,7 @@ int return_step_measurement(void);
 void set_step_2(void);
 void set_step_3(void);
 
-
+void change_data_type_for_uart(int data);
 
 
 #endif /* MEASUREMENT_H_ */

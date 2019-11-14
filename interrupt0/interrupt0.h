@@ -9,10 +9,8 @@
 #ifndef INTERRUPT0_H_
 #define INTERRUPT0_H_
 
-void Int0_ini_up(void);
-void Int0_ini_down(void);
+void Int0_ini(void);
 void Int0_disabled(void);
 
-void change_interrup(void);
 
 #endif /* INTERRUPT0_H_ */
