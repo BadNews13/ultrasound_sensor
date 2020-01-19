@@ -18,4 +18,6 @@ void Timer0_ini_CTC(void);
 void Timer0_stop(void);
 int Timer0_get_us(void);
 
+void pulses_for_test(void);
+
 #endif /* TIMER0_H_ */

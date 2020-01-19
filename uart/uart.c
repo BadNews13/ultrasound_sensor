@@ -1,16 +1,42 @@
-#include "usart.h"
+#include <avr/io.h>
+#include "uart.h"
+#include <avr/interrupt.h>
 
- uint8_t rx_data = 0;		//	принятый байт
-int last_rx_data = 0;
-int tx_data = 0;		//	байт на отправку
-int last_tx_data = 0;
+volatile uint8_t tx_counter = 0;							// количество byte в буфере отправки
+volatile uint8_t tx_write_index = 0;						// индекс записываемого байта в буфер отправки
+volatile uint8_t tx_read_index = 0;							// индекс считываемого байта из буфера отправки
 
-void USART_ini()			// настройка UART
+volatile uint8_t rx_counter = 0;							// количество byte в буфере преима
+volatile uint8_t rx_write_index = 0;						// индекс записываемого байта из буфер приема
+volatile uint8_t rx_read_index = 0;							// индекс считываемого байта из буфера приема
+
+uint8_t rx_buffer[RX_BUFFER_SIZE];							// принятые данные
+uint8_t tx_buffer[TX_BUFFER_SIZE];							// данные для отправки
+
+uint8_t rx_buffer_overflow = 0;								// буфер приема переполнен
+
+uint16_t main_rs485_address;									// адрес платы
+
+	uint16_t UART_BAUDRATE;
+	uint16_t BAUD_PRESCALE;
+	
+	uint8_t pack_state = 0;							// пак получен
+	
+
+void uart_ini(uint8_t _dipBaudRate, uint8_t _dipAdress)		// настройка UART
 {
+	main_rs485_address = _dipAdress;
+	UART_BAUDRATE = _dipBaudRate*100;
+	BAUD_PRESCALE = (((F_CPU / (UART_BAUDRATE * 16UL))) - 1);
+/*	
+	sbit(UART_RX_PORT,UART_RX_PIN_NUM);
+	cbit(UART_RX_DDR,UART_RX_PIN_NUM);
+	sbit(UART_TX_DDR,UART_TX_PIN_NUM);
+*/	
 	cli();
 
-	UBRR0L = UBRRL_value;       //Младшие 8 бит UBRRL_value
-	UBRR0H = UBRRL_value >> 8;  //Старшие 8 бит UBRRL_value
+	UBRR0L =	BAUD_PRESCALE;			//Младшие 8 бит UBRRL_value
+	UBRR0H =	(BAUD_PRESCALE >> 8);  //Старшие 8 бит UBRRL_value
 
 	UCSR0A =	(0<<RXC0)|			// Bit - 7	RXC — флаг завершения приема, устанавливается в 1 при наличие непрочитанных данных в буфере приемник — UDR;
 				(0<<TXC0)|			// Bit - 6	TXC — флаг завершения передачи, устанавливается в 1 при передачи всех разрядов из передатчика — UDR;
@@ -38,40 +64,102 @@ void USART_ini()			// настройка UART
 				(1<<UCSZ01)|		// Bit - 2	UCSZ1 — совместно с битом UCSZ2 регистра UCSRB определяют количество бит данных в кадрах (см. таблицу выше);
 				(1<<UCSZ00)|		// Bit - 1	UCSZ0 — совместно с битом UCSZ2 регистра UCSRB определяют количество бит данных в кадрах (см. таблицу выше);
 				(0<<UCPOL0);		// Bit - 0	UCPOL — бит полярность тактового сигнала, при синхронном режиме определяет по какому фронту принимать/передавать данные – по спадающему или по нарастающему.
-
 	sei();
 }
 
-ISR(USART_RX_vect)			// сработает если пришел байт в буфер UART
+
+void put_byte(uint8_t c)
 {
-	rx_data = UDR0;
-//	PORTB = rx_data;
+	while (tx_counter == TX_BUFFER_SIZE);	// если количество байт к отправке равно размеру буфера, то ждем отправку
+	
+	cli();
+	
+	tx_buffer[tx_write_index++] = c;		// запишем байт в буфер
+	
+	if (tx_write_index == TX_BUFFER_SIZE)	// если дошли до конца буфера, то переставим индекс в начало	
+	{
+		tx_write_index = 0;
+	}
+	
+	tx_counter++;							// увеличим счетчик количества байтов к отправке
+
+//	while(!(UCSR0A&(1<<UDRE0)));			// надо убрать эту задержку и проверить на плате
+	ENABLE_UART_UDRIE_INT;					// разрешаем прерывание по опустошению регистра UDR0
+	sei();
 }
 
-uint8_t getch_usart()			// не работает
+
+ISR(USART_UDRE_vect)		// отправлять данные, если есть (вызывается, когда регистр пуст)
 {
-	return rx_data;
-}
-void putch_usart(int tx_data)
-{
-		while (!(UCSR0A & (1 << UDRE0)));	// ожидаем опустошения буфера отправки
-		{
-			UDR0 = tx_data;
+	// если есть байты на отправку
+	if (tx_counter)
+	{
+		--tx_counter;
+		UDR0 = tx_buffer[tx_read_index++];
 		
-/*			while (((tx_data>>8)>0)  & (1 << UDRE0))
-			{
-				tx_data=tx_data>>8;
-				while (!(UCSR0A & (1 << UDRE0)));	// ожидаем опустошения буфера отправки
-				UDR0 = tx_data;
-			}*/
+		// если дошли до конца буфера, то переставим индекс в начало	
+		if (tx_read_index == TX_BUFFER_SIZE)
+		{
+			tx_read_index = 0;
 		}
+		
+		// если отправили последний байт, то отключим прерывание по опустошению UDR
+		if (tx_counter == 0)
+		{
+			DISABLE_UART_UDRIE_INT;
+		}
+	}
+	else // если данных не было, то отключим прерывание по опустошению UDR
+	{
+		DISABLE_UART_UDRIE_INT;
+	}
 }
 
-void write_float(float f)
+
+uint16_t get_byte(void)
 {
-	unsigned char *ptr;
-	char i;
-	ptr = (unsigned char *)&f;
-	for (i=0;i<4;i++)
-	putch_usart(*(ptr++));
+	uint8_t data;
+	
+	if(rx_counter == 0)
+	{
+		return NO_CHAR;
+	}
+	data = rx_buffer[rx_read_index++];
+	
+	if (rx_read_index == RX_BUFFER_SIZE)		// индекс идет по кругу
+	{
+		rx_read_index = 0;
+	}
+	
+	--rx_counter;
+	
+	return data;
+}
+
+
+ISR(USART_RX_vect)
+{
+	uint16_t status, data;
+
+	status = UCSR0A;
+	data = UDR0;
+	if ((status & (FRAMING_ERROR | PARITY_ERROR | DATA_OVERRUN)) == 0)
+	{
+		rx_buffer[rx_write_index++] = data;
+		 
+		if (rx_write_index == RX_BUFFER_SIZE)
+		{
+			rx_counter = 0;
+		}
+		if (++rx_counter == RX_BUFFER_SIZE)
+		{
+			rx_counter = 0;
+			rx_buffer_overflow = 1;
+		}
+	}
+}
+
+uint16_t return_main_rs485_address(void)
+{
+	return main_rs485_address;
 }

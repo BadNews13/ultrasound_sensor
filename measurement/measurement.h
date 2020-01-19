@@ -12,11 +12,14 @@
 void measurement(void);
 
 int return_step_measurement(void);
+int return_distance(void);
 
 void set_step_2(void);
 void set_step_3(void);
 
-void change_data_type_for_uart(int data);
+void change_data_type_for_uart(float data);
+
+
 
 
 #endif /* MEASUREMENT_H_ */

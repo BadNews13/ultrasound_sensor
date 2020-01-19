@@ -1,14 +1,13 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "interrupt0.h"
-#include "C:\Users\PC-013\Desktop\work\!проекты\Ultrasound\MA40S4R\MA40S4R\measurement/measurement.h"
+#include "interrupt.h"
 
+#include "C:\work\!project\Ultrasound\MA40S4R\MA40S4R\measurement\measurement.h"
 
 void Int0_ini(void)
 {
 	//прерывания INT0 по восходящему фронту
-	putch_usart(0x01);
 	
 	EICRA =	(0<<ISC11)|		//	3 bit: событие для INT1
 			(0<<ISC10)|		//	2 bit: событие для INT1
@@ -35,7 +34,6 @@ void Int0_disabled()
 
 ISR(INT0_vect)
 {
-	putch_usart(0xff);
 	set_step_3();
 	measurement();
 }

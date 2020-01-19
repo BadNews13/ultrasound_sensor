@@ -1,13 +1,11 @@
 
 #include "measurement.h"
 #include <avr/io.h>
-//#include "interrupt0/interrupt0.h"
 
-
-#define max_delay_interrupt 6000			//	максимальное время ожидания прерывания (60000 - это 10 метров)
+#define max_delay_interrupt 10000			//	максимальное время ожидания прерывания (60000 - это 10 метров)
 
 int step = 0;								//	шаг функции измерения
-int distance = 0;							//	расстояние
+float distance = 0;							//	расстояние
 int out_pulse_count = 0;					//	отправленные импульсы
 int interrupt_count = 0;					//	количество внешних прерываний
 
@@ -57,31 +55,42 @@ void measurement(void)
 		
 		case 2:
 		{
-			time_count++;					//	считаем время
+			time_count++;					//	считаем время (при каждом заполнении таймера мы сюда попадаем)
 			
 			// если разница в прерываниях больше допустимой, то считаем его последним и выводим дистанцию
 			if (time_count - time_interrupt > max_delay_interrupt)			
 			{
-				distance = ( ( 340 * time_interrupt ) / 2 ) / 10000;		//	[ дистанция = (скорость ультразвука * время) / 2 ]. Дистанция получится в сантиметрах если /10000
-//				write_float(time_interrupt);								//	заменить на вывод дистанции
-
+				distance = ( ( 340 * time_interrupt ) / 2 ) / 100;		//	[ дистанция = (скорость ультразвука * время) / 2 ]. Дистанция получится в сантиметрах если /10000
+//				write_float(time_interrupt);							//	заменить на вывод дистанции
+				if (distance == 0) {distance = 1;}						//	свое рода флаг, что измерение завершено даже если эхо не пришло
 				change_data_type_for_uart(time_interrupt);				// разбить число на 4 байта
+/*
 				putch_usart(uart_byte_1);
 				putch_usart(uart_byte_2);
 				putch_usart(uart_byte_3);
 				putch_usart(uart_byte_4);
-								
+*/																	
+			//	putch0(change_number_for_uart(uart_byte_1));
+			//	putch0(change_number_for_uart(uart_byte_2));
+			//	putch0(change_number_for_uart(uart_byte_3));
+			//	putch0(change_number_for_uart(uart_byte_4));				
+	
 				change_data_type_for_uart(distance);				// разбить число на 4 байта
+/*				
 				putch_usart(uart_byte_1);
 				putch_usart(uart_byte_2);
 				putch_usart(uart_byte_3);
 				putch_usart(uart_byte_4);
-				step = 4;
+*/				
+			//	putch0(change_number_for_uart(uart_byte_1));
+			//	putch0(change_number_for_uart(uart_byte_2));
+			//	putch0(change_number_for_uart(uart_byte_3));
+			//	putch0(change_number_for_uart(uart_byte_4));
 				
-							Timer0_stop();					//	останавливаем таймер, который переключает пин OC0A
-							Int0_disabled();				//	отключаем внешнее прерывание
-							step = 0;						//	ставим флаг - 3-й шаг выполнен, переход к 0-ому шагу в следующем вызове функции
-
+				
+				Timer0_stop();					//	останавливаем таймер, который переключает пин OC0A
+				Int0_disabled();				//	отключаем внешнее прерывание
+				step = 0;						//	ставим флаг - 3-й шаг выполнен, переход к 0-ому шагу в следующем вызове функции
 			}
 			return;
 		}
@@ -94,13 +103,20 @@ void measurement(void)
 			interrupt_count++;
 			if (interrupt_count>10)
 			{
-				step = 4;
+				Timer0_stop();					//	останавливаем таймер, который переключает пин OC0A
+				Int0_disabled();				//	отключаем внешнее прерывание
+				step = 0;						//	ставим флаг - 3-й шаг выполнен, переход к 0-ому шагу в следующем вызове функции
 			}
 			return;
 		}
 	}
 }
 
+
+int return_distance(void)
+{
+	return distance;
+}
 
 int return_step_measurement()
 {
@@ -117,14 +133,20 @@ void set_step_2(void)
 	step = 2;
 }
 
-void change_data_type_for_uart(int data)
+void change_data_type_for_uart(float data)
 {
 	// пример 12 345 678;
+
+		while(data>99999999)		//  если число слишком большое, то хотябы увидим старушую часть
+			{
+				data = data/10;
+			}
+
 	
-	uart_byte_1 = data / 1000000;	//	12												//	123456/10000		=12
-	uart_byte_2 = (data - uart_byte_1 * 1000000) / 10000;	//	34							//	(123456-(123456/10000)*10000)/100 = (123456-120000)/100 = 3456/100 = 34				
-	uart_byte_3 = (data - uart_byte_1 * 1000000 - uart_byte_2 * 10000) / 100;			//	56
-	uart_byte_4 = (data - uart_byte_1 * 1000000 - uart_byte_2 * 10000 - uart_byte_3 * 100);		//78
+	uart_byte_1 = data / 1000000;	//	12															//	123456/10000		=12
+	uart_byte_2 = (data - uart_byte_1 * 1000000) / 10000;	//	34									//	(123456-(123456/10000)*10000)/100 = (123456-120000)/100 = 3456/100 = 34				
+	uart_byte_3 = (data - uart_byte_1 * 1000000 - uart_byte_2 * 10000) / 100;	//	56
+	uart_byte_4 = (data - uart_byte_1 * 1000000 - uart_byte_2 * 10000 - uart_byte_3 * 100);	//	78
 
 //			12345678    -     12      * 1000000 -      34     * 10000 -     56      * 100 )
 }

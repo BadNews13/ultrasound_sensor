@@ -36,10 +36,23 @@
         <documentation help="" />
         <offline-documentation help="" />
         <dependencies>
-          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.34.1" />
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.39.0" />
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
+    <avrtool>com.atmel.avrdbg.tool.simulator</avrtool>
+    <avrtoolserialnumber />
+    <avrdeviceexpectedsignature>0x1E950F</avrdeviceexpectedsignature>
+    <com_atmel_avrdbg_tool_simulator>
+      <ToolOptions xmlns="">
+        <InterfaceProperties>
+        </InterfaceProperties>
+      </ToolOptions>
+      <ToolType xmlns="">com.atmel.avrdbg.tool.simulator</ToolType>
+      <ToolNumber xmlns="">
+      </ToolNumber>
+      <ToolName xmlns="">Simulator</ToolName>
+    </com_atmel_avrdbg_tool_simulator>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -120,16 +133,19 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="comparator\comparator.c">
+    <Compile Include="crc\crc8.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="comparator\comparator.h">
+    <Compile Include="crc\crc8.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="interrupt0\interrupt0.c">
+    <Compile Include="defines\defines_global.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="interrupt0\interrupt0.h">
+    <Compile Include="interrupt\interrupt.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="interrupt\interrupt.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="main.c">
@@ -141,25 +157,47 @@
     <Compile Include="measurement\measurement.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="shell\cmd_interp.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="shell\cmd_interp.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="timer0\timer0.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="timer0\timer0.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="usart\usart.c">
+    <Compile Include="timer2\timer2.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="usart\usart.h">
+    <Compile Include="timer2\timer2.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="uart\uart.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="uart\uart.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="uart_dec_numbers\uart_dec_numbers.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="uart_dec_numbers\uart_dec_numbers.h">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="comparator" />
-    <Folder Include="interrupt0" />
+    <Folder Include="interrupt" />
     <Folder Include="measurement" />
+    <Folder Include="defines" />
+    <Folder Include="crc" />
+    <Folder Include="uart" />
+    <Folder Include="shell" />
+    <Folder Include="timer2" />
+    <Folder Include="uart_dec_numbers" />
     <Folder Include="timer0" />
-    <Folder Include="usart" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>

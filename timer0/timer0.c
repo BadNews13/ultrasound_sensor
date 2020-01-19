@@ -1,7 +1,9 @@
 
 #include <avr/interrupt.h>
 #include "timer0.h"
-//#include "interrupt0/interrupt0.h"
+
+#include <avr/interrupt.h>
+int out_pulse_count_test = 0;
 	
 void Timer0_ini_PWM(void)
 {
@@ -13,6 +15,8 @@ prescaler 1/8																								*
 */
 
 //Переделал в CTC-mode т.к. для OC0B отсутствует режим работы toggle в PWM-mode. если делать под один датчик, то можно вернуть PWM и использовать OC0A с последующей перенастройкой ноги для компаратора
+
+out_pulse_count_test=0;
 
 	cli();
 	TCCR0A =	(0<<COM0A1)|	//	7 bit: Compare Output Mode
@@ -31,7 +35,7 @@ prescaler 1/8																								*
 	
 	TCNT0 =		0x00;			//	Текущее значение счетчика
 	
-	OCR0A =		0b00011000;		//	Output Compare Register A				//	значение до которого считает таймер (12)
+	OCR0A =		0b00001100;		//	Output Compare Register A				//	значение до которого считает таймер (12)
 	OCR0B = 	0b00000000;		//	Output Compare Register B				//	значение до которого считает таймер
 	
 	TIMSK0 =	(0<<OCIE0B)|	//	2 bit: Output Compare Match B Interrupt Enable						//	прерывание при сравнении с B
@@ -53,9 +57,10 @@ prescaler 1/8																														*
 16Mhz / 8 = 2 000 000 Hz; 2 000 000 Hz / 0x02 = 1 000 000 Hz ;  1 000 000 Hz = 1 us (милисекунд)									*
 (Но при измерении осцилографом ноги переключаемой в прерваниях максимальная частота не больше - 203 kHz, т.е. 4,9 микросекунды)		*
 */
+
 	cli();
 	TCCR0A =	(0<<COM0A1)|	//	7 bit: Compare Output Mode
-				(0<<COM0A0)|	//	6 bit: Compare Output Mode		/1
+				(1<<COM0A0)|	//	6 bit: Compare Output Mode		/1
 				(0<<COM0B1)|	//	5 bit: Compare Output Mode
 				(0<<COM0B0)|	//	4 bit: Compare Output Mode
 				(1<<WGM01)|		//	1 bit: Waveform Generation Mode
@@ -70,7 +75,7 @@ prescaler 1/8																														*
 		
 	TCNT0 =		0x00;			//	Текущее значение счетчика
 		
-	OCR0A =		0b00000010;		//	Output Compare Register A				//	значение до которого считает таймер
+	OCR0A =		0b00011100;		//	Output Compare Register A				//	значение до которого считает таймер
 	OCR0B = 	0b00000000;		//	Output Compare Register B				//	значение до которого считает таймер
 		
 	TIMSK0 =	(0<<OCIE0B)|	//	2 bit: Output Compare Match B Interrupt Enable						//	прерывание при сравнении с B
@@ -85,6 +90,10 @@ prescaler 1/8																														*
 
 ISR(TIMER0_COMPA_vect)
 {	
+	
+	pulses_for_test();
+	
+		
 	if (return_step_measurement() == 3)
 	{
 		set_step_2();
@@ -109,3 +118,13 @@ void Timer0_stop(void)
 				(0<<COM0B0);	//	4 bit: Compare Output Mode
 }
 
+void pulses_for_test(void)
+{
+	out_pulse_count_test++;				//	счетчик будет увеличиваться на 1 каждое прерывание таймер (4,9 микросекунд)
+	
+	if (out_pulse_count_test==20)		//	ждем 10 импульсов
+	{
+		Timer0_stop();				//	останавливаем таймер, который переключает пин OC0A
+		PORTD = (0<<PIND6);			//	пин OC0B вниз (что бы пин не остался в 1 при четном/нечетном количестве переключений)
+	}
+}
