@@ -5,21 +5,19 @@
  *  Author: PC-013
  */ 
 
+#include "../defines/defines_global.h"
 
 #ifndef MEASUREMENT_H_
 #define MEASUREMENT_H_
 
-void measurement(void);
+void measurement(void);						//	запустить измерение
+uint16_t return_distance(void);				//	возвращает измеренную дистанцию (в см) (см - требование по ТЗ)
+uint8_t return_sensor_status(void);			//	возвращает состояние парковочного места (занято/свободно)
 
-int return_step_measurement(void);
-int return_distance(void);
-
+uint8_t return_step_measurement(void);
 void set_step_2(void);
 void set_step_3(void);
 
-void change_data_type_for_uart(float data);
-
-
-
+void change_data_type_for_uart(uint16_t data);		//	разбить длинное число на несколько двухзначных (чтобы в порте визульно видно было)
 
 #endif /* MEASUREMENT_H_ */

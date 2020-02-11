@@ -2,18 +2,18 @@
 #include "measurement.h"
 #include <avr/io.h>
 
-#define max_delay_interrupt 10000			//	максимальное время ожидания прерывания (60000 - это 10 метров)
+#define max_delay_interrupt 10000		//	максимальное время ожидания прерывания (60000 - это 10 метров)
 
-int step = 0;								//	шаг функции измерения
-float distance = 0;							//	расстояние
-int out_pulse_count = 0;					//	отправленные импульсы
-int interrupt_count = 0;					//	количество внешних прерываний
+uint8_t step = 0;						//	шаг функции измерения
+uint16_t distance = 0;					//	расстояние
+int out_pulse_count = 0;				//	отправленные импульсы
+int interrupt_count = 0;				//	количество внешних прерываний
 
 int time_count = 0;						//	время из таймера
 int time_interrupt = 0;					//	время срабатывания прерывания
 
-//float time_count = 0;						//	время из таймера
-//float time_interrupt = 0;					//	время срабатывания прерывания
+//float time_count = 0;					//	время из таймера
+//float time_interrupt = 0;				//	время срабатывания прерывания
 
 	char uart_byte_1 = 0;											
 	char uart_byte_2 = 0;					
@@ -113,12 +113,19 @@ void measurement(void)
 }
 
 
-int return_distance(void)
+uint16_t return_distance(void)
 {
 	return distance;
 }
 
-int return_step_measurement()
+uint8_t return_sensor_status(void)
+{
+//	return sensor_status;
+}
+
+
+
+uint8_t return_step_measurement(void)
 {
 	return step;
 }
@@ -133,16 +140,15 @@ void set_step_2(void)
 	step = 2;
 }
 
-void change_data_type_for_uart(float data)
+void change_data_type_for_uart(uint16_t data)
 {
 	// пример 12 345 678;
 
-		while(data>99999999)		//  если число слишком большое, то хотябы увидим старушую часть
-			{
-				data = data/10;
-			}
+	while(data>99999999)		//  если число слишком большое, то хотябы увидим старушую часть
+		{
+			data = data/10;
+		}
 
-	
 	uart_byte_1 = data / 1000000;	//	12															//	123456/10000		=12
 	uart_byte_2 = (data - uart_byte_1 * 1000000) / 10000;	//	34									//	(123456-(123456/10000)*10000)/100 = (123456-120000)/100 = 3456/100 = 34				
 	uart_byte_3 = (data - uart_byte_1 * 1000000 - uart_byte_2 * 10000) / 100;	//	56

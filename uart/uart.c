@@ -28,15 +28,11 @@ void uart_ini(uint8_t _dipBaudRate, uint8_t _dipAdress)		// настройка UART
 	main_rs485_address = _dipAdress;
 	UART_BAUDRATE = _dipBaudRate*100;
 	BAUD_PRESCALE = (((F_CPU / (UART_BAUDRATE * 16UL))) - 1);
-/*	
-	sbit(UART_RX_PORT,UART_RX_PIN_NUM);
-	cbit(UART_RX_DDR,UART_RX_PIN_NUM);
-	sbit(UART_TX_DDR,UART_TX_PIN_NUM);
-*/	
+
 	cli();
 
 	UBRR0L =	BAUD_PRESCALE;			//ћладшие 8 бит UBRRL_value
-	UBRR0H =	(BAUD_PRESCALE >> 8);  //—таршие 8 бит UBRRL_value
+	UBRR0H =	(BAUD_PRESCALE >> 8);	//—таршие 8 бит UBRRL_value
 
 	UCSR0A =	(0<<RXC0)|			// Bit - 7	RXC Ч флаг завершени€ приема, устанавливаетс€ в 1 при наличие непрочитанных данных в буфере приемник Ч UDR;
 				(0<<TXC0)|			// Bit - 6	TXC Ч флаг завершени€ передачи, устанавливаетс€ в 1 при передачи всех разр€дов из передатчика Ч UDR;
@@ -83,7 +79,6 @@ void put_byte(uint8_t c)
 	
 	tx_counter++;							// увеличим счетчик количества байтов к отправке
 
-//	while(!(UCSR0A&(1<<UDRE0)));			// надо убрать эту задержку и проверить на плате
 	ENABLE_UART_UDRIE_INT;					// разрешаем прерывание по опустошению регистра UDR0
 	sei();
 }

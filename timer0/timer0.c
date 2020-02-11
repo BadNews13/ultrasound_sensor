@@ -90,10 +90,8 @@ prescaler 1/8																														*
 
 ISR(TIMER0_COMPA_vect)
 {	
-	
 	pulses_for_test();
 	
-		
 	if (return_step_measurement() == 3)
 	{
 		set_step_2();

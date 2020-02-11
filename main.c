@@ -13,9 +13,8 @@ void read_dip(void);
 uint8_t dipBaudRate;							// скорость полученная с dip переключателей
 uint8_t dipAdress;								// адрес платы полученный с dip переключателей
 
-int start_measurement = 0;
-int button_state = 0;
-char temp_data = 0;
+uint8_t start_measurement = 0;
+uint8_t button_state = 0;
 
 void PORT_ini(void)
 {

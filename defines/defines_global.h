@@ -32,50 +32,6 @@
 #define UART_TIMEOUT_CLR()		do{TCNT0 = 0;}while(0)
 //********Управление таймером таймаута UART************
 
-/*
-//глобальные флаги UART
-#define GFU_UART_BYTE_RCV_FLG 0
-#define GFU_ACTIVATOR_IS_ACTIVE_FLG 1
-#define GFU_RS485_CMD_RCV_FLG 2
-#define GFU_UART_SEND_WORKING 3			
-#define UART_START_BYTE_ARRIVED 4				// получен стартовый байт
-#define UART_OUR_PACKAGE 5						// прием данных разрешен
-
-#define UART_TX_DDR	DDRD
-#define UART_TX_PORT PORTD
-#define UART_TX_PIN PIND
-#define UART_TX_PIN_NUM	PORTD1
-#define UART_RX_DDR DDRD
-#define UART_RX_PORT PORTD
-#define UART_RX_PIN PIND
-#define UART_RX_PIN_NUM	PORTD0
-
-
-/*
-//информация о пакете
-#define CMD_BYTES_DATALEN 0				// длина пакета
-#define CMD_BYTES_RECEIVER 1			// получатель
-#define CMD_BYTES_SENDER 2				// отправитель
-#define CMD_BYTES_FLAGS 3				// флаги
-#define CMD_BYTES_DATA_OFFSET 4			// 
-*/
-
-
-#define CONST_DISTANCE  3				// расстояние с которым сравнивается показание датчика
-
-#define PACKET_START_BYTE 0xAA
-
-#define START_BYTE 0
-#define ID_RECIPIENT 1
-#define ID_SENDER 2
-#define LEN 3
-#define CMD 4
-#define RES 4
-#define DATA_OFFSET 5
-//#define CRC LEN
-
-//****команды в датчик***
-#define CHECK_STATE_PLACE 0x04
 
 
 #endif /* DEFINES_GLOBAL_H_ */
