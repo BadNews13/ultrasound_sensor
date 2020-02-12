@@ -1,8 +1,13 @@
 
 #include "measurement.h"
 #include <avr/io.h>
+#include <avr/eeprom.h>
+
+//8-ми разрядная переменная в EEPROM
+uint8_t reference_distance EEMEM = 100;		//	эталонная дистанция
 
 #define max_delay_interrupt 10000		//	максимальное время ожидания прерывания (60000 - это 10 метров)
+
 
 uint8_t step = 0;						//	шаг функции измерения
 uint16_t distance = 0;					//	расстояние
@@ -113,16 +118,25 @@ void measurement(void)
 }
 
 
-uint16_t return_distance(void)
+uint16_t get_distance(void)
 {
 	return distance;
+}
+
+uint8_t set_distance(uint8_t _value)
+{
+	eeprom_write_byte(&reference_distance,_value);
+}
+
+uint8_t distance_from_eeprom(void)
+{
+	return eeprom_read_byte(&reference_distance);
 }
 
 uint8_t return_sensor_status(void)
 {
 //	return sensor_status;
 }
-
 
 
 uint8_t return_step_measurement(void)

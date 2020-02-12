@@ -39,7 +39,6 @@ int main(void)
 	
 //put_byte(0xFF);
 
-	send_crc8();
 
 while(1)	
 {
