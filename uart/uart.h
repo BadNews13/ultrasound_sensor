@@ -11,7 +11,7 @@
 #define UART_RX_PIN			PIND
 #define UART_RX_PIN_NUM		PORTD0
 
-#define F_CPU 16000000UL
+//#define F_CPU 16000000UL
 
 #define sbit(var,bit)			do{var |= (1<<bit);}while(0)			// установить бит
 #define cbit(var,bit)			do{var &= ~(1<<bit);}while(0)			// очистить бит
@@ -37,5 +37,7 @@ void uart_ini(uint8_t _dipBaudRate, uint8_t _dipAdress);
 void put_byte(uint8_t c);
 uint16_t get_byte(void);
 uint16_t return_main_rs485_address(void);
+void reset_uart_rx(void);
+void parsing_uart_RX(void);
 
 #endif /* UART_H_ */

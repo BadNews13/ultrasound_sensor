@@ -157,22 +157,46 @@
     <Compile Include="measurement\measurement.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="mirf\mirf.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mirf\mirf.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mirf\nRF24L01.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\rtos\commons.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\rtos\rtos.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\rtos\rtos.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\timer_2\timer_2.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\timer_2\timer_2.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="shell\cmd_interp.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="shell\cmd_interp.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="spi\spi.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="spi\spi.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="timer0\timer0.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="timer0\timer0.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="timer2\timer2.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="timer2\timer2.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="uart\uart.c">
@@ -193,9 +217,13 @@
     <Folder Include="measurement" />
     <Folder Include="defines" />
     <Folder Include="crc" />
+    <Folder Include="mirf" />
+    <Folder Include="spi" />
+    <Folder Include="RTOS_assembly" />
+    <Folder Include="RTOS_assembly\rtos" />
+    <Folder Include="RTOS_assembly\timer_2" />
     <Folder Include="uart" />
     <Folder Include="shell" />
-    <Folder Include="timer2" />
     <Folder Include="uart_dec_numbers" />
     <Folder Include="timer0" />
   </ItemGroup>

@@ -2,6 +2,8 @@
 #include "measurement.h"
 #include <avr/io.h>
 #include <avr/eeprom.h>
+#include "../timer0/timer0.h"
+#include "../interrupt/interrupt.h"
 
 //8-ми разрядная переменная в EEPROM
 uint8_t reference_distance EEMEM = 100;		//	эталонная дистанция

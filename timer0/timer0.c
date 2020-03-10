@@ -1,6 +1,7 @@
 
 #include <avr/interrupt.h>
 #include "timer0.h"
+#include "../measurement/measurement.h"
 
 #include <avr/interrupt.h>
 int out_pulse_count_test = 0;

@@ -1,6 +1,10 @@
+#include "../defines/defines_global.h"
 #include <avr/io.h>
 #include "uart.h"
 #include <avr/interrupt.h>
+#include "../RTOS_assembly/rtos/rtos.h"
+#include "../shell/cmd_interp.h"
+#include "../crc/crc8.h"
 
 volatile uint8_t tx_counter = 0;							// количество byte в буфере отправки
 volatile uint8_t tx_write_index = 0;						// индекс записываемого байта в буфер отправки
@@ -20,7 +24,15 @@ uint16_t main_rs485_address;									// адрес платы
 	uint16_t UART_BAUDRATE;
 	uint16_t BAUD_PRESCALE;
 	
-	uint8_t pack_state = 0;							// пак получен
+
+uint8_t pack_state = 0;										// пак получен
+uint8_t	first_byte_from_pack = 0;							// первый байт полученный в uart
+
+uint8_t pack_from_uart[RX_BUFFER_SIZE];						// пакет из uart
+uint8_t first_byte_taken = 0;								// флаг "первый байт получен"
+uint8_t byte_index = 0;										// индекс байтов в вытаскиваемом пакете
+
+
 	
 
 void uart_ini(uint8_t _dipBaudRate, uint8_t _dipAdress)		// настройка UART
@@ -28,8 +40,6 @@ void uart_ini(uint8_t _dipBaudRate, uint8_t _dipAdress)		// настройка UART
 	main_rs485_address = _dipAdress;
 	UART_BAUDRATE = _dipBaudRate*100;
 	BAUD_PRESCALE = (((F_CPU / (UART_BAUDRATE * 16UL))) - 1);
-
-	cli();
 
 	UBRR0L =	BAUD_PRESCALE;			//Младшие 8 бит UBRRL_value
 	UBRR0H =	(BAUD_PRESCALE >> 8);	//Старшие 8 бит UBRRL_value
@@ -60,7 +70,6 @@ void uart_ini(uint8_t _dipBaudRate, uint8_t _dipAdress)		// настройка UART
 				(1<<UCSZ01)|		// Bit - 2	UCSZ1 — совместно с битом UCSZ2 регистра UCSRB определяют количество бит данных в кадрах (см. таблицу выше);
 				(1<<UCSZ00)|		// Bit - 1	UCSZ0 — совместно с битом UCSZ2 регистра UCSRB определяют количество бит данных в кадрах (см. таблицу выше);
 				(0<<UCPOL0);		// Bit - 0	UCPOL — бит полярность тактового сигнала, при синхронном режиме определяет по какому фронту принимать/передавать данные – по спадающему или по нарастающему.
-	sei();
 }
 
 
@@ -70,16 +79,14 @@ void put_byte(uint8_t c)
 	
 	cli();
 	
-	tx_buffer[tx_write_index++] = c;		// запишем байт в буфер
+	tx_buffer[tx_write_index++] = c;								// запишем байт в буфер
 	
-	if (tx_write_index == TX_BUFFER_SIZE)	// если дошли до конца буфера, то переставим индекс в начало	
-	{
-		tx_write_index = 0;
-	}
+	if (tx_write_index == TX_BUFFER_SIZE)	{tx_write_index = 0;}	// если дошли до конца буфера, то переставим индекс в начало	
 	
-	tx_counter++;							// увеличим счетчик количества байтов к отправке
+	tx_counter++;													// увеличим счетчик количества байтов к отправке
 
-	ENABLE_UART_UDRIE_INT;					// разрешаем прерывание по опустошению регистра UDR0
+	ENABLE_UART_UDRIE_INT;											// разрешаем прерывание по опустошению регистра UDR0
+	
 	sei();
 }
 
@@ -90,24 +97,16 @@ ISR(USART_UDRE_vect)		// отправлять данные, если есть (вызывается, когда регистр
 	if (tx_counter)
 	{
 		--tx_counter;
+		
 		UDR0 = tx_buffer[tx_read_index++];
 		
-		// если дошли до конца буфера, то переставим индекс в начало	
-		if (tx_read_index == TX_BUFFER_SIZE)
-		{
-			tx_read_index = 0;
-		}
-		
-		// если отправили последний байт, то отключим прерывание по опустошению UDR
-		if (tx_counter == 0)
-		{
-			DISABLE_UART_UDRIE_INT;
-		}
+		if (tx_read_index == TX_BUFFER_SIZE)	{tx_read_index = 0;}	// если дошли до конца буфера, то переставим индекс в начало	
+
+		if (tx_counter == 0)	{DISABLE_UART_UDRIE_INT;}				// если отправили последний байт, то отключим прерывание по опустошению UDR
+
 	}
-	else // если данных не было, то отключим прерывание по опустошению UDR
-	{
-		DISABLE_UART_UDRIE_INT;
-	}
+	else {DISABLE_UART_UDRIE_INT;}										// если данных не было, то отключим прерывание по опустошению UDR
+
 }
 
 
@@ -115,16 +114,11 @@ uint16_t get_byte(void)
 {
 	uint8_t data;
 	
-	if(rx_counter == 0)
-	{
-		return NO_CHAR;
-	}
+	if(rx_counter == 0)		{return NO_CHAR;}
+
 	data = rx_buffer[rx_read_index++];
 	
-	if (rx_read_index == RX_BUFFER_SIZE)		// индекс идет по кругу
-	{
-		rx_read_index = 0;
-	}
+	if (rx_read_index == RX_BUFFER_SIZE)	{rx_read_index = 0;}	// индекс идет по кругу
 	
 	--rx_counter;
 	
@@ -142,10 +136,8 @@ ISR(USART_RX_vect)
 	{
 		rx_buffer[rx_write_index++] = data;
 		 
-		if (rx_write_index == RX_BUFFER_SIZE)
-		{
-			rx_counter = 0;
-		}
+		if (rx_write_index == RX_BUFFER_SIZE)	{rx_counter = 0;}
+
 		if (++rx_counter == RX_BUFFER_SIZE)
 		{
 			rx_counter = 0;
@@ -157,4 +149,61 @@ ISR(USART_RX_vect)
 uint16_t return_main_rs485_address(void)
 {
 	return main_rs485_address;
+}
+
+	
+void parsing_uart_RX(void)
+{
+	uint8_t start_RX = 1;
+	while(start_RX)
+	{
+		uint16_t tmp_byte = get_byte();
+		if(!(tmp_byte == NO_CHAR))			//	если вытянули байт
+		{
+			RTOS_SetTask(reset_uart_rx, 1, 0);
+			if(!first_byte_taken)			//	если первого байта еще не было
+			{
+				byte_index = 0;				//	обнуляем индекс вытянутых байт
+				first_byte_taken = 1;		//	поднимаем флаг "первый байт занят"
+			}
+				
+			pack_from_uart[byte_index++] = tmp_byte;		//	запишем байт в массив и увеличим индекс
+				
+			if(first_byte_taken == 1)						//	если 1-й байт занят
+			{
+				if(byte_index == pack_from_uart[0])			//	если кол-во пришедших байт равно содержимому 1-го байта
+				{
+					first_byte_taken = 0;					//	снимаем флаг "первый бай занят"
+
+					uint8_t tmp_crc8 = crc8(&pack_from_uart[0],pack_from_uart[0]-1);		//	посчитаем crc
+						
+					if(tmp_crc8 == pack_from_uart[pack_from_uart[0]-1])			//	проверим crc
+					{
+						pack_state = 1;							//	поднимаем флаг "пакет готов к обработке"
+						porcessing_pack(&pack_from_uart[0]);
+					}
+					else
+					{
+						first_byte_taken = 0;					//	снимаем флаг "первый бай занят"
+						pack_state = 0;							//	опускаем флаг "пакет готов к обработке"
+						byte_index = 0;							//	обнуляем индекс вытянутых байт
+					}
+				}
+			}
+		}else{start_RX = 0;}
+	}
+	RTOS_SetTask(parsing_uart_RX, 2, 0);
+}
+
+
+void reset_uart_rx(void)
+{
+	rx_counter = 0;
+	rx_write_index = 0;
+	rx_read_index = 0;
+			
+	pack_state = 0;
+	first_byte_taken = 0;
+	byte_index = 0;
+	rx_buffer_overflow = 0;
 }

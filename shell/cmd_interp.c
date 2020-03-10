@@ -4,75 +4,126 @@
 #include "../uart/uart.h"
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
-
-uint8_t pack[RX_BUFFER_SIZE];		//	массив для хранения пакета
-	
-//	используется для вытягивания нашего пакета из общего потока данных
-uint8_t flags_package_state = 0;				//	хранит флаги
-uint8_t sequence = 0;							//	количество вытаскиваемых из буфера байт
-#define  PACKET_START_BYTE_FLAG		0			//	флаг "пришел стартовый байт"
-#define  MAIN_ADDRESS_FLAG			1			//	флаг "в пакете наш адрес"
-#define  PACKET_LENGTH_FLAG			2			//	флаг "длина пакета получена"
-#define  PACKET_READY_FLAG			3			//	флаг "пакет готов к обработке"
-//	==================================================================
-
-
-
+#include "../mirf/mirf.h"
+#include "../crc/crc8.h"
 
 
 /*///////////////////////////////////////////////////////////////
 структура пакета:
 0 byte - Длина пакета
 1 byte - Адрес получателя
-2 byte - Адрес отправителя
-3 byte - флаги
-4 byte - Команда
-5 byte - Данные
+2 byte - Адрес
+3 byte - Адрес
+4 byte - Адрес (спецсимвол конца пути 0)
+5 byte - Адрес отправителя
+6 byte - Счетчик пакетов
+7 byte - флаги
+8 byte - Команда
+9 byte - Данные/парамметры
 .
 N byte - Контрольная сумма (crc8)	(N = Длина пакета + 1)
 *///////////////////////////////////////////////////////////////
-//(пакет идентифицируется по первому и второму байту, затем на основе длины высчитывается контрольная сумма)
+
+uint8_t main_485_adress = 0x0F;										//	собственный адрес (сейчас 15)
+
+uint8_t sensors_is_live[max_end_device/8];							//	массив работающих датчиков (1 бит - 1 датчик) (номер бита в массиве = адресу датчика)
+uint8_t sensors_status[max_end_device/8];							//	массив результатов датчиков (1 бит - 1 датчик) (номер бита в массиве = адресу датчика)
+uint8_t adr_sensor = 0;												//	номер адреса датчика для запроса результата с живого сенсора
+uint8_t last_adr_dead_sensor = 0;									//	номер адреса датчика для запроса результата с мертвого сенсора
+uint8_t	time_last_request = 0;										//	время когда был сделан последний запрос
+uint8_t wait_sensor_answer = 0;										//	флаг "ожидаю ответ от датчика"
+
+uint8_t results_for_pc[max_end_device][BYTES_FOR_SAFE_RESULT];		//	массив для хранения отправленных пакетов (пока не получат ACK)
+uint8_t count_sensors = 0;											//	кол-во подключенных устройств
+uint8_t number_of_the_generated_pack = 0;							//	номер сгенерированного пакета
+
+uint8_t	new_pack[MAX_PACK_LENGTH];									//	пакет для отправки собственных команд
 
 
 
 
-uint8_t cmd_exec(uint8_t *pack)
+/////////	НАЧАЛО СЛУЖЕБНЫХ ФУНКЦИИ	/////////
+
+void adr_shift_back(uint8_t *package_pointer)
 {
-	uint8_t funcres;
-	funcres=0;
-			
-	uint8_t cmd_id = pack[CMD_BYTES_DATA_OFFSET];				//	извлекаем команду
-	uint8_t tmp_my_adr = pack[CMD_BYTES_RECEIVER];				//	берем свой же адрес из пакета (т.к. из пакета его сейчас легче достать)
-	pack[CMD_BYTES_RECEIVER] = pack[CMD_BYTES_SENDER];			//	вставляем адрес получателя
-	pack[CMD_BYTES_SENDER] = tmp_my_adr;						//	вставляем адрес отправителя (наш)
-	cbit(pack[CMD_BYTES_FLAGS],CMD_FLAGS_BITS_NETWORK);			//	поднимаем флаг ACK
+	//сдвигаем адреса назад
+	uint8_t temp_byte = package_pointer[CMD_BYTES_ADDR_5];
+	for (uint8_t i = CMD_BYTES_ADDR_5; i<CMD_BYTES_ADDR_1; i--)		{package_pointer[i]=package_pointer[i-1];}
+	package_pointer[CMD_BYTES_ADDR_1] = temp_byte;
+}
 
-		switch (cmd_id)
+void put_pack_back(uint8_t *package_pointer)
+{
+		#ifdef MIRF_ENABLED
+			mirf_write(package_pointer);														//	передаем пакет по радио
+		#else
+			for(uint8_t i = 0; i<package_pointer[0]; i++)	{put_byte(package_pointer[i]);}		//	передаем пакет по uart
+		#endif
+}
+
+
+uint8_t porcessing_pack(uint8_t *package_pointer)			//	бработка полученного пакета
+{
+	if(package_pointer[CMD_BYTES_ADDR_1]==15)			//	если адрес в пакете наш
+	{
+		switch (package_pointer[CMD_BYTES_COMMAND])		//	начинается разбор команд
 		{
-			case CMD_SENSOR_STATUS:										//	проверить состояние места
-				while(!(return_step_measurement() == 0));				//	ждем пока предыдущее измерение закончится (вдруг дважды зупастили (например если из-за ошибки приняли пакет не с нашим адресом))
-				measurement();											//	измеряем
-				while((return_distance() == 0))							//	ждем, пока в переменную distance запишется результат (1 или верная дистанция)
-				pack[CMD_BYTES_DATA_OFFSET+1] = return_sensor_status();	//	вставляем результат в пакет (команду не трогаем. кладем ответ в следующий байт)
-
-				break;
-				
-			case CMD_SENSOR_SET_DISTANCE:
-				set_distance(pack[CMD_BYTES_DATA_OFFSET+1]);				//	Запишем эталонное значение дистанции в eeprom
-				if(distance_from_eeprom()==pack[CMD_BYTES_DATA_OFFSET+1])	//	Считаем эталонное значение дистанции из eeprom
-				{
-					pack[CMD_BYTES_DATA_OFFSET+1] = CMD_IS_DONE;			//	подвтерждение выполненя команды кладем в ответный пакет (команду не трогаем. кладем ответ в следующий байт)
-				}
+			case CMD_SENSOR_STATUS:					//	запрос состояния парковочного места (занято/свободно)
+			{
+				// измерение
+				// отправить результат (занято/свободно)
+			}
 			
-			case CMD_SENSOR_RESET:
-				{
-					wdt_disable();
-					wdt_enable(WDTO_15MS);
-					while (1) {}
-				}
+			case CMD_SENSOR_GET_DISTANCE:			//	запрос точной дистанции до обьекта
+			{
+				// измерение
+				// отправить результат	(расстояние в см)
+			}
+
+			case CMD_SENSOR_SET_DISTANCE:			//	установить эталонное значение расстояния срабатывания датчика
+			{
+				//	записать в eeprom полученное значение
+			}
+
+			case CMD_RESET:							//	перезагрузить устройство
+			{
+				adr_shift_back(package_pointer);
+				package_pointer[CMD_BYTES_DATA_OFFSET+1] = CMD_IS_DONE;
+				package_pointer[CMD_BYTES_DATALEN]++;
+				package_pointer[CMD_BYTES_CRC] = crc8(package_pointer, package_pointer[CMD_BYTES_DATALEN]-1);
+				put_pack_back(package_pointer);				//отправить пакет в предыдущую сеть
+				reset_device();		//	выполняем после, потому что уже ничего не отправим если перезагрузимся
+			}
 		}
-		
-		
-		
-		
+	}
+}
+
+
+
+uint8_t calculate_datalen(uint8_t *package_pointer)
+{
+	//	способ примитивный, но пака так
+	for(uint8_t i = MAX_PACK_LENGTH; i>MIN_PACK_LENGTH-1; i--)
+	{
+		if(!(package_pointer[i] == 0x00))	{return i+1;}
+	}
+	return 0x00;	//	если мы не узнали длину опускаясь от максимумальной длины до минимальной минус 1 байт CRC, то вернем 0
+}
+
+
+
+/////////	НАЧАЛО ВЫПОЛНЯЕМЫХ КОМАНД ПО ЗАПРОСУ	/////////
+
+void reset_device(void)
+{
+	wdt_disable();
+	wdt_enable(WDTO_15MS);
+	while (1) {}
+}
+
+/////////	КОНЕЦ ВЫПОЛНЯЕМЫХ КОМАНД ПО ЗАПРОСУ		/////////
+
+void return_ACK_error(uint8_t *package_pointer)
+{
+	return 0;
 }

@@ -9,6 +9,15 @@
 #ifndef DEFINES_GLOBAL_H_
 #define DEFINES_GLOBAL_H_
 
+#define  F_CPU 16000000UL
+
+
+//********** chois communication (can't work together) **********
+//#define MIRF_ENABLED
+#ifndef MIRF_ENABLED
+//	#define MIRF_Master			//	set MASTER or SLAVE
+#endif
+//***************************************************************
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -31,6 +40,14 @@
 #define UART_TIMEOUT_STOP()		do{TCCR0B = 0;}while(0)
 #define UART_TIMEOUT_CLR()		do{TCNT0 = 0;}while(0)
 //********Управление таймером таймаута UART************
+
+
+#define HALL_PWRON()	do{sbit(PORTC,4);}while(0)
+#define HALL_PWROFF()	do{cbit(PORTC,4);}while(0)
+#define HALL_ADC_INPUT	0
+#define ADC_VREF_TYPE	((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
+#define ADC_ON()		do{sbit(ADCSRA,ADEN);}while(0)
+#define ADC_OFF()		do{cbit(ADCSRA,ADEN);}while(0)
 
 
 

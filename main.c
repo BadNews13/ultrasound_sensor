@@ -1,13 +1,13 @@
+#include "defines/defines_global.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include "uart/uart.h"
-#include "timer2/timer2.h"
 #include "measurement/measurement.h"
 #include "interrupt/interrupt.h"
 #include "uart_dec_numbers/uart_dec_numbers.h"
-#include "defines/defines_global.h"
 #include "shell/cmd_interp.h"
+#include "RTOS_assembly/rtos/rtos.h"
 
 void read_dip(void);
 uint8_t dipBaudRate;							// скорость полученная с dip переключателей
@@ -16,75 +16,199 @@ uint8_t dipAdress;								// адрес платы полученный с dip переключателей
 uint8_t start_measurement = 0;
 uint8_t button_state = 0;
 
-void PORT_ini(void)
+
+#ifdef MIRF_ENABLED
+
+#include "mirf/mirf.h"
+#include "spi/spi.h"
+
+#define RF_POWER_ON()	do{sbit(PORTC,1);}while(0)
+#define RF_POWER_OFF()	do{cbit(PORTC,1);}while(0)
+
+#ifdef MIRF_Master
+//	Для ардуины отправителя
+uint8_t rxaddr_tag[5] = {0xF0, 0xF0, 0xF0, 0xF0, 0xF0};		//	адрес этого устройства
+uint8_t txaddr_tag[5] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F};		//	адрес удаленного устройства
+#else
+//	Для ардуины получателя
+uint8_t rxaddr_tag[5] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F};		//	адрес этого устройства
+uint8_t txaddr_tag[5] = {0xF0, 0xF0, 0xF0, 0xF0, 0xF0};		//	адрес удаленного устройства
+#endif
+
+void mirf_full_reset_to_rx(void)
 {
-	DDRD |= (1<<PIND4);		//	sensor_pulses (отправка импульсов)
-	DDRD |= (0<<PIND2);		//	sensor_return (приме ответного сигнала)
-	DDRB |= (1<<PINB1)|(1<<PINB2);		//	светодиод над парковочным местом
+	mirf_clear();
+	mirf_rx_clear();
+	MIRF_SET_PD();
+	MIRF_SET_RX();
+	MIRF_CE_HI();
+}
 
-//	DDRD |= (1<<PIND5);		// pin OC0B для посыла 10 импульсов (в излучатель)
-	DDRD |= (1<<PIND5);		
-	DDRD |= (1<<PIND6);		// pin OC0A для посыла 10 импульсов (в излучатель)
+#endif
 
-	DDRB = 0xff;
+
+void port_ini(void)
+{
+	// ************** NRF24L01 **************
+	//	CE								PB1
+	//	CSN								PB0
+	//	SCK								PB5
+	//	MOSI							PB3
+	//	MISO							PB4
+	//	IRQ								PD3			(INT1)
+	
+	// **************** SENSOR *************** 
+	//	SENSOR_RETURN					PD2			(INT0)
+	//	SENSOR_PULSES					PD6			(OC0A)
+	
+	// **************** RS485 ****************
+	//	COTROL_DIR						PD4
+	//	Hard_uart_TX					PD1
+	//	Hard_uart_RX					PD0
+	
+	// ************ BAUD_RATE_DIP ************
+	//	dipBaudRate						PC3
+	//	dipBaudRate						PC2
+	
+	// *********** LED (RED/GREEN) ***********
+	//	LED_GREEN						PC5
+	//	LED_RED							PC4
+	
+	// ************** LED_FILM *************** 
+	//	LED_FILM_GREEN					PC1
+	//	LED_FILM_RED					PC0
+	
+	// ************ PACK_IN_LED **************
+	//	PACK_IN_LED						PD5
+	
+	// ************* RES_EEPROM ************** 
+	//	RES_EEPROM						PD7
+	
+	// ***************** ADC *****************
+	//	ADC								PC6
+	
+	//настройка пинов
+	DDRB	=	(0<<PINB7) |		//	кварц
+				(1<<PINB6) |		//	кварц
+				(1<<PINB5) |		//	SCK
+				(0<<PINB4) |		//	MISO
+				(1<<PINB3) |		//	MOSI
+				(1<<PINB2) |		//	SS (не используем, но на всякий случай притянем к +)
+				(1<<PINB1) |		//	CE
+				(1<<PINB0);			//	CSN
+	
+	PORTB	=	(0<<PINB7) |		//	кварц
+				(0<<PINB6) |		//	кварц
+				(0<<PINB5) |		//	SCK
+				(0<<PINB4) |		//	MISO
+				(0<<PINB3) |		//	MOSI
+				(1<<PINB2) |		//	SS (не используем, но на всякий случай притянем к +)
+				(0<<PINB1) |		//	CE	(NRF24L01 активна по высокому уровню)	для перехода в режим прослушивания - притянуть к 1
+				(1<<PINB0);			//	CSN	(NRF24L01 активна по низкому уровню)	для обмена данным по SPI - притянуть к 0
+
+
+
+	DDRC	=	(0<<PINC6) |		//	ADC
+				(1<<PINC5) |		//	LED_GREEN
+				(1<<PINC4) |		//	LED_RED		
+				(0<<PINC3) |		//	dipBaudRate bit_1
+				(0<<PINC2) |		//	dipBaudRate bit_0
+				(1<<PINC1) |		//	LED_FILM_GREEN
+				(1<<PINC0);			//	LED_FILM_RED
+	
+	PORTC	=	(0<<PINC6) |		//	ADC
+				(0<<PINC5) |		//	LED_GREEN
+				(0<<PINC4) |		//	LED_RED
+				(0<<PINC3) |		//	dipBaudRate bit_1
+				(0<<PINC2) |		//	dipBaudRate bit_0
+				(0<<PINC1) |		//	LED_FILM_GREEN
+				(0<<PINC0);			//	LED_FILM_RED
+
+
+
+	DDRD	=	(1<<PIND7) |		//	RES_EEPROM
+				(0<<PIND6) |		//	SENSOR_PULSES
+				(1<<PIND5) |		//	PACK_IN_LED
+				(1<<PIND4) |		//	COTROL_DIR (RS485)
+				(0<<PIND3) |		//	IRQ				(INT1)
+				(0<<PIND2) |		//	SENSOR_RETURN	(INT0)
+				(1<<PIND1) |		//	Hard_uart_TX
+				(0<<PIND0);			//	Hard_uart_RX
+	
+	PORTD	=	(0<<PIND7) |		//	RES_EEPROM
+				(0<<PIND6) |		//	SENSOR_RETURN
+				(0<<PIND5) |		//	PACK_IN_LED
+				(0<<PIND4) |		//	COTROL_DIR (RS485)
+				(1<<PIND3) |		//	IRQ				(INT1)	(NRF24L01 активна по низкому уровню)	если придет пакет по радио, то NRF24L01 прижмет эту ногу к 0
+				(1<<PIND2) |		//	SENSOR_RETURN	(INT0)
+				(1<<PIND1) |		//	Hard_uart_TX	(притянуть к плюсу)
+				(1<<PIND0);			//	Hard_uart_RX	(притянуть к плюсу)
 }
 
 int main(void)
 {
-	PORT_ini();				//	порты
-	uart_ini(48, 13);		//	инициализация USART BaudRate_4800 Adress_3
-	read_dip();				//	считать адрес платы и скорость с дип-переключателей
+	port_ini();				//	порты
+	uart_ini(48,15);		//	инициализация USART BaudRate_4800 Adress_15
+	read_dip();				//	считать скорость baud_rate с дип-переключателей
+	RTOS_Init();
+	
+	
+	#ifdef MIRF_ENABLED
+		spi_ini();				//	for mirf
+
+		RF_POWER_ON();//питание передатчика
+		_delay_ms(50);
+		mirf_init();
+		_delay_ms(50);
+		sei();
+
+		mirf_config();
+		_delay_ms(50);
+
+		//ретранслятор слушает два канала
+		mirf_set_rxaddr(0,txaddr_tag);				//	в 0 канал приемника записывается адрес удаленной стороны (для подтверждений)
+		mirf_set_rxaddr(1,rxaddr_tag);				//	в 1 канал приемника записывается адрес этого устройства
+
+		//передача возможна только по одному каналу по умолчанию это канал метки
+		mirf_set_txaddr(txaddr_tag);
+
+		mirf_write_register(RF_SETUP,6);//1мегабит/с, максимальная мощность
+
+		//для наших целей приемник всегда должен быть включен
+		MIRF_SET_RX();
+		MIRF_CE_HI();
+	
+		mirf_write_register(RF_CH, mirf_CH); //set RF channel.
+	
+		mirf_full_reset_to_rx();
+		_delay_ms(50);		// обязательно поставить задержку
+
+		//	проверка, что nRF24L01 правильно работает (после отладки удалить)
+		uint8_t check_mirf = mirf_get_status();
+		put_byte(check_mirf);
+
+		//creat_and_send_pack_for_test();
+		//send_test_pack_to_mirf();
+		//send_cicle_byte_to_soft_uart();
+		
+	#endif
+	
 
 	sei();
-	
-//put_byte(0xFF);
 
-
-while(1)	
-{
-//	search_for_my_package();
+	RTOS_SetTask(parsing_uart_RX, 2, 0);
+	while(1)
+	{
+	}
 }
-
-
-/*	while(1)
-	{	
-		
-//****Светодиод над парковочным местом	
-		if (return_distance()>1)		//		если есть адекватное расстояние
-		{
-			if (return_distance()>=CONST_DISTANCE)		//	если показание датчика больше установленного значения, то место свободно
-			{
-				PORTB = (1<<PINB1);			//	led_green
-				PORTB = (0<<PINB2);			//	led_red
-			}		
-			else										//	если показание датчика меньше установленного значения, то место занято
-			{
-				PORTB = (0<<PINB1);			//	led_green
-				PORTB = (1<<PINB2);			//	led_red
-			}
-		}
-		
-//if   (PIND & (1<<PIND4)){}
-		
-	}*/
-}
-
 
 void read_dip(void)
 {	
-	//	bit PC0: tmp_Adress
-	//	bit PC1: tmp_Adress
-	//	bit PC2: tmp_Adress
-	//	bit PC3: tmp_Adress
-	//	bit PC4: tmp_Adress
-	//	bit PC5: tmp_Adress
-	//	bit PD6: BaudRate
-	//	bit PD7: BaudRate
+	//	bit PC3: BaudRate
+	//	bit PC2: BaudRate
 
-	dipAdress = PORTC & 0b00111111;
-
-	uint8_t tmp_Baud = PORTD;
-	tmp_Baud = (tmp_Baud >> 6) & 0b00000011;
+	uint8_t tmp_Baud = PORTC;
+	tmp_Baud = (tmp_Baud >> 2) & 0b00000011;
 	switch(tmp_Baud)
 	{
 		case 0:
