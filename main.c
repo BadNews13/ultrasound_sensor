@@ -127,7 +127,7 @@ void port_ini(void)
 
 
 	DDRD	=	(1<<PIND7) |		//	RES_EEPROM
-				(0<<PIND6) |		//	SENSOR_PULSES
+				(1<<PIND6) |		//	SENSOR_PULSES
 				(1<<PIND5) |		//	PACK_IN_LED
 				(1<<PIND4) |		//	COTROL_DIR (RS485)
 				(0<<PIND3) |		//	IRQ				(INT1)
@@ -194,11 +194,14 @@ int main(void)
 	#endif
 	
 
+
 	sei();
 
-	RTOS_SetTask(parsing_uart_RX, 2, 0);
+//	RTOS_SetTask(parsing_uart_RX, 2, 0);
 	while(1)
 	{
+		Timer0_ini_PWM();
+		_delay_ms(100);
 	}
 }
 

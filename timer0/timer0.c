@@ -8,18 +8,16 @@ int out_pulse_count_test = 0;
 	
 void Timer0_ini_PWM(void)
 {
-/*Таймер для генерации импульсов на PWM ноге																*
-PWM PhaseCorrect mode																						*
-prescaler 1/8																								*
-верх таймера 0x0C																							*
-При 16Mhz - инверсия OC0A будет происходить с частотой ~82kHz (следовательно импульсы - ~41kHz)				*
-*/
+//	Таймер для генерации импульсов на PWM ноге								*
+//	PWM PhaseCorrect mode													*
+//	no prescaler															*
+//	TOP = OCRA = 100 (0x64)													*
+//	For 16Mhz: toggle OC0A = 160 000kHz (pulses = toggle OC0A / 4 = 40kHz)	*
 
 //Переделал в CTC-mode т.к. для OC0B отсутствует режим работы toggle в PWM-mode. если делать под один датчик, то можно вернуть PWM и использовать OC0A с последующей перенастройкой ноги для компаратора
 
 out_pulse_count_test=0;
 
-	cli();
 	TCCR0A =	(0<<COM0A1)|	//	7 bit: Compare Output Mode
 				(1<<COM0A0)|	//	6 bit: Compare Output Mode		/1 toggle в PWM
 				(0<<COM0B1)|	//	5 bit: Compare Output Mode		
@@ -31,13 +29,13 @@ out_pulse_count_test=0;
 				(0<<FOC0B)|		//	6 bit: Force Output Compare B
 				(1<<WGM02)|		//	3 bit: Waveform Generation Mode
 				(0<<CS02)|		//	2 bit: Clock Select
-				(1<<CS01)|		//	1 bit: Clock Select
-				(0<<CS00);		//	0 bit: Clock Select
+				(0<<CS01)|		//	1 bit: Clock Select
+				(1<<CS00);		//	0 bit: Clock Select
 	
 	TCNT0 =		0x00;			//	Текущее значение счетчика
 	
-	OCR0A =		0b00001100;		//	Output Compare Register A				//	значение до которого считает таймер (12)
-	OCR0B = 	0b00000000;		//	Output Compare Register B				//	значение до которого считает таймер
+	OCR0A =		100;			//	Output Compare Register A
+	OCR0B = 	0;				//	Output Compare Register B
 	
 	TIMSK0 =	(0<<OCIE0B)|	//	2 bit: Output Compare Match B Interrupt Enable						//	прерывание при сравнении с B
 				(1<<OCIE0A)|	//	1 bit: Output Compare Match A Interrupt Enable						//	прерывание при сравнении с A
@@ -46,7 +44,6 @@ out_pulse_count_test=0;
 	TIFR0 =		(0<<OCF0B)|		//	2 bit: Output Compare Match Flag B
 				(0<<OCF0A)|		//	1 bit: Output Compare Match Flag A
 				(0<<TOV0);		//	0 bit: Overflow Flag
-	sei();
 }
 
 void Timer0_ini_CTC(void)
@@ -91,8 +88,9 @@ prescaler 1/8																														*
 
 ISR(TIMER0_COMPA_vect)
 {	
-	pulses_for_test();
 	
+	pulses_for_test();
+/*	
 	if (return_step_measurement() == 3)
 	{
 		set_step_2();
@@ -102,7 +100,7 @@ ISR(TIMER0_COMPA_vect)
 	{
 		measurement();
 	}
-
+*/
 }
 
 void Timer0_stop(void)

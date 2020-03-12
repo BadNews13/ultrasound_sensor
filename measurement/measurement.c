@@ -32,7 +32,6 @@ void measurement(void)
 {
 	switch (step)
 	{
-		
 		case 0:								//	0-й шаг: НАЧАЛО
 		{
 			distance = 0;					//	обнуляем предыдущее значение
