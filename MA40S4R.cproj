@@ -40,19 +40,47 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
-    <avrtool>com.atmel.avrdbg.tool.simulator</avrtool>
-    <avrtoolserialnumber />
+    <avrtool>com.atmel.avrdbg.tool.stk500</avrtool>
+    <avrtoolserialnumber>
+    </avrtoolserialnumber>
     <avrdeviceexpectedsignature>0x1E950F</avrdeviceexpectedsignature>
     <com_atmel_avrdbg_tool_simulator>
-      <ToolOptions xmlns="">
+      <ToolOptions>
         <InterfaceProperties>
         </InterfaceProperties>
+        <InterfaceName>
+        </InterfaceName>
       </ToolOptions>
-      <ToolType xmlns="">com.atmel.avrdbg.tool.simulator</ToolType>
-      <ToolNumber xmlns="">
+      <ToolType>com.atmel.avrdbg.tool.simulator</ToolType>
+      <ToolNumber>
       </ToolNumber>
-      <ToolName xmlns="">Simulator</ToolName>
+      <ToolName>Simulator</ToolName>
     </com_atmel_avrdbg_tool_simulator>
+    <avrtoolinterface>ISP</avrtoolinterface>
+    <avrtoolinterfaceclock>125000</avrtoolinterfaceclock>
+    <com_atmel_avrdbg_tool_ispmk2>
+      <ToolOptions>
+        <InterfaceProperties>
+          <IspClock>0</IspClock>
+        </InterfaceProperties>
+        <InterfaceName>ISP</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.ispmk2</ToolType>
+      <ToolNumber>672270297838</ToolNumber>
+      <ToolName>AVRISP mkII</ToolName>
+    </com_atmel_avrdbg_tool_ispmk2>
+    <com_atmel_avrdbg_tool_stk500>
+      <ToolOptions>
+        <InterfaceProperties>
+          <IspClock>125000</IspClock>
+        </InterfaceProperties>
+        <InterfaceName>ISP</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.stk500</ToolType>
+      <ToolNumber>
+      </ToolNumber>
+      <ToolName>STK500</ToolName>
+    </com_atmel_avrdbg_tool_stk500>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -142,6 +170,18 @@
     <Compile Include="defines\defines_global.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="my_name\get_name\get_name.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="my_name\get_name\get_name.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="my_name\timer_1\timer_1.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="my_name\timer_1\timer_1.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="interrupt\interrupt.c">
       <SubType>compile</SubType>
     </Compile>
@@ -151,10 +191,40 @@
     <Compile Include="main.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="measurement\measurement.c">
+    <Compile Include="sensor\measurement\measurement.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="measurement\measurement.h">
+    <Compile Include="sensor\measurement\measurement.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="sensor\timer0\timer0.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="sensor\timer0\timer0.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mirf\mirf.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mirf\mirf.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mirf\nRF24L01.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\rtos\commons.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\rtos\rtos.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\rtos\rtos.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\timer_2\timer_2.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RTOS_assembly\timer_2\timer_2.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="shell\cmd_interp.c">
@@ -163,16 +233,10 @@
     <Compile Include="shell\cmd_interp.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="timer0\timer0.c">
+    <Compile Include="spi\spi.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="timer0\timer0.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="timer2\timer2.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="timer2\timer2.h">
+    <Compile Include="spi\spi.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="uart\uart.c">
@@ -189,15 +253,23 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="my_name\get_name" />
+    <Folder Include="my_name\timer_1" />
     <Folder Include="interrupt" />
-    <Folder Include="measurement" />
+    <Folder Include="sensor" />
     <Folder Include="defines" />
     <Folder Include="crc" />
+    <Folder Include="sensor\measurement" />
+    <Folder Include="sensor\timer0" />
+    <Folder Include="mirf" />
+    <Folder Include="my_name" />
+    <Folder Include="spi" />
+    <Folder Include="RTOS_assembly" />
+    <Folder Include="RTOS_assembly\rtos" />
+    <Folder Include="RTOS_assembly\timer_2" />
     <Folder Include="uart" />
     <Folder Include="shell" />
-    <Folder Include="timer2" />
     <Folder Include="uart_dec_numbers" />
-    <Folder Include="timer0" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>
